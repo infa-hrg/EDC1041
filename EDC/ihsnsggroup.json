@@ -1,0 +1,82 @@
+﻿{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "networkSecurityGroupLocation": {
+        "type": "string"
+      },
+      "allowedIpRange": {
+        "type": "string"
+      },
+      "informaticaTags": {
+        "type": "object"
+      }
+    },
+  "variables": {
+    "informaticaNetworkSecurityGroupName": "[toLower(concat('ihsnsg', uniqueString(resourceGroup().id)))]"
+  },
+    "resources": [
+      {
+        "type": "Microsoft.Network/networkSecurityGroups",
+        "name": "[variables('informaticaNetworkSecurityGroupName')]",
+        "apiVersion": "2020-04-01",
+        "tags": {
+          "displayName": "ihsnsg",
+          "provider": "[toUpper(parameters('informaticaTags').provider)]"
+        },
+        "location": "[parameters('networkSecurityGroupLocation')]",
+        "properties": {
+          "securityRules": [
+            {
+              "name": "port_8080",
+              "properties": {
+                "description": "Enabling ports required for Informatica minimum and maximum.",
+                "protocol": "Tcp",
+                "sourcePortRange": "8080",
+                "destinationPortRange": "8080",
+                "sourceAddressPrefix": "[parameters('allowedIpRange')]",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 132,
+                "direction": "Inbound"
+              }
+            },
+            {
+              "name": "port_8088",
+              "properties": {
+                "description": "Enabling ports required for Informatica minimum and maximum.",
+                "protocol": "Tcp",
+                "sourcePortRange": "8088",
+                "destinationPortRange": "8088",
+                "sourceAddressPrefix": "[parameters('allowedIpRange')]",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 104,
+                "direction": "Inbound"
+              }
+            },
+            {
+              "name": "DenyAllOutBound",
+              "properties": {
+                "description": "Block all internet access.",
+                "protocol": "*",
+                "sourcePortRange": "*",
+                "destinationPortRange": "*",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "*",
+                "access": "Deny",
+                "priority": 100,
+                "direction": "Outbound"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": {
+      "nsgId": {
+        "value": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('informaticaNetworkSecurityGroupName'))]",
+        "type": "string"
+      }
+    }
+  }

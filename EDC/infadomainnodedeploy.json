@@ -1,0 +1,238 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "infaDomainNodeLocation": {
+      "type": "string"
+    },
+    "informaticaDomainHostName": {
+      "type": "string"
+    },
+    "informaticaDomainInstanceType": {
+      "type": "string"
+    },
+    "informaticaDomainHostSshUsername": {
+      "type": "string"
+    },
+    "informaticaDomainHostSshPassword": {
+      "type": "securestring"
+    },
+    "subnetId": {
+      "type": "string"
+    },
+    "informaticaNetworkSecurityGroupName": {
+      "type": "string"
+    },
+    "informaticaLicenseFullPath": {
+      "type": "securestring"
+    },
+    "sqlServerPassword": {
+      "type": "securestring"
+    },
+    "sqlServerName": {
+      "type": "string"
+    },
+    "_artifactsLocation": {
+      "type": "string"
+    },
+    "informaticaAdministratorUsername": {
+      "type": "string"
+    },
+    "informaticaAdministratorPassword": {
+      "type": "securestring"
+    },
+    "loadType": {
+      "type": "string"
+    },
+    "osVersion": {
+      "type": "string"
+    },
+    "imagePublisher": {
+      "type": "string"
+    },
+    "imageOffer": {
+      "type": "string"
+    },
+    "informaticaTags": {
+      "type": "object"
+    },
+    "PrivateDnsName": {
+      "type": "string"
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring"
+    },
+    "publicIP": {
+      "type": "string"
+    },
+    "ihsip0": {
+      "type": "string"
+    },
+    "ihsip1": {
+      "type": "string"
+    },
+    "ihsip2": {
+      "type": "string"
+    },
+    "ihsip3": {
+      "type": "string"
+    },
+    "ihsip4": {
+      "type": "string"
+    },
+    "ihsip5": {
+      "type": "string"
+    },
+    "HighAvailability": {
+      "type": "string"
+    },
+    "HANode": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "launchServicesScriptUri": "[uri(parameters('_artifactsLocation'), concat('silentlaunch.sh', parameters('_artifactsLocationSasToken')))]",
+    "nodeDNSName": "[toLower(concat(parameters('informaticaDomainHostName'), uniqueString(resourceGroup().id)))]",
+    "nodeNicName": "[concat(parameters('informaticaDomainHostName'),'Nic')]",
+    "pip?": "[if(equals(parameters('publicIP'), 'yes'), bool('true'), bool('false'))]",
+    "pipObject": {
+      "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('nodeDNSName'))]"
+    }
+  },
+  "resources": [
+    {
+      "condition": "[variables('pip?')]",
+      "name": "[variables('nodeDNSName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[parameters('infaDomainNodeLocation')]",
+      "apiVersion": "2020-04-01",
+     "tags": {
+        "displayName": "publicip",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('nodeDNSName')]"
+        }
+      }
+    },
+    {
+      "name": "[variables('nodeNicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('infaDomainNodeLocation')]",
+      "apiVersion": "2020-04-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('nodeDNSName'))]"
+      ],
+      "tags": {
+        "displayName": "niccard",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[parameters('subnetId')]"
+              },
+              "publicIPAddress": "[if(variables('pip?'), variables('pipObject'), json('null'))]"
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('informaticaNetworkSecurityGroupName'))]"
+        }
+      }
+    },
+    {
+      "name": "[parameters('informaticaDomainHostName')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[parameters('infaDomainNodeLocation')]",
+      "tags": {
+        "displayName": "nodevm",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "plan": {
+        "name": "[parameters('osVersion')]",
+        "publisher": "[parameters('imagePublisher')]",
+        "product": "[parameters('imageOffer')]"
+      },
+      "apiVersion": "2019-12-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('nodeDNSName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nodeNicName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('informaticaDomainInstanceType')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('informaticaDomainHostName')]",
+          "adminUsername": "[parameters('informaticaDomainHostSshUsername')]",
+          "adminPassword": "[parameters('informaticaDomainHostSshPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('osVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "InfaOSDisk",
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "Standard_LRS"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nodeNicName'))]"
+            }
+          ]
+        }
+      }, 
+      "resources": [
+        {
+          "name": "scriptExtension",
+          "type": "extensions",
+          "location": "[parameters('infaDomainNodeLocation')]",
+          "apiVersion": "2019-12-01",
+          "tags": {
+            "displayName": "vmscriptext",
+            "provider": "[toUpper(parameters('informaticaTags').provider)]"
+          },
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('informaticaDomainHostName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Azure.Extensions",
+            "type": "CustomScript",
+            "typeHandlerVersion": "2.0",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[variables('launchServicesScriptUri')]"
+              ]
+            },
+            "protectedSettings": {
+              "commandToExecute": "[concat('./silentlaunch.sh',' \"',parameters('informaticaLicenseFullPath'),'\" ','\"',parameters('sqlServerPassword'),'\" ',parameters('sqlServerName'),' ',parameters('informaticaAdministratorUsername'),' \"',parameters('informaticaAdministratorPassword'),'\" ','NA',' ',parameters('HighAvailability'),' ',parameters('HANode'),' ',parameters('PrivateDnsName'),' ',parameters('ihsip0'),' ',parameters('ihsip1'),' ',parameters('ihsip2'),' ',parameters('ihsip3'),' ',parameters('ihsip4'),' ',parameters('ihsip5'),' ',parameters('loadType'))]"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "GatewayIP": {
+      "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', variables('nodeNicName')),'2020-04-01')]",
+      "type": "object"
+    }
+  }
+}

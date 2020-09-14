@@ -1,0 +1,123 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "informaticaNetworkSecurityGroupName": {
+      "type": "string"
+    },
+    "networkSecurityGroupLocation": {
+      "type": "string"
+    },
+    "allowedIpRange": {
+      "type": "string"
+    },
+    "informaticaTags": {
+      "type": "object"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('informaticaNetworkSecurityGroupName')]",
+      "apiVersion": "2020-04-01",
+      "tags": {
+        "displayName": "nsg",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "location": "[parameters('networkSecurityGroupLocation')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "default-allow-ssh",
+            "properties": {
+              "priority": 120,
+              "sourceAddressPrefix": "[parameters('allowedIpRange')]",
+              "protocol": "Tcp",
+              "destinationPortRange": "22",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "MinMaxports",
+            "properties": {
+              "description": "Enabling ports required for Informatica minimum and maximum.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "6000-23000",
+              "sourceAddressPrefix": "[parameters('allowedIpRange')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "MinMaxport",
+            "properties": {
+              "description": "Enabling ports required for Informatica minimum and maximum.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "16000-18000",
+              "sourceAddressPrefix": "[parameters('allowedIpRange')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 130,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "RDP",
+            "properties": {
+              "description": "Enabling port for RDP",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "[parameters('allowedIpRange')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 111,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "DenyAllOutBound",
+            "properties": {
+              "description": "Block all internet access.",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 500,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforCustomScript",
+            "properties": {
+              "description": "open internet for CustomScript .",
+              "protocol": "Tcp",
+              "sourcePortRange": "443",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "151.101.8.133",
+              "access": "Allow",
+              "priority": 499,
+              "direction": "Outbound"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "nsgId": {
+      "value": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('informaticaNetworkSecurityGroupName'))]",
+      "type": "string"
+    }
+  }
+}

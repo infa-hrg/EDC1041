@@ -1,0 +1,193 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "infaDomainNodeLocation": {
+      "type": "string"
+    },
+    "informaticaDomainInstanceType": {
+      "type": "string"
+    },
+    "informaticaDomainHostSshUsername": {
+      "type": "string"
+    },
+    "informaticaDomainHostSshPassword": {
+      "type": "securestring"
+    },
+    "subnetId": {
+      "type": "string"
+    },
+    "publicIP": {
+      "type": "string"
+    },
+    "IHSNodeCount": {
+      "type": "int"
+    },
+    "informaticaTags": {
+      "type": "object"
+    },
+    "_artifactsLocation": {
+      "type": "string"
+    },
+    "IhsHostName": {
+      "type": "string"
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring"
+    }
+  },
+  "variables": {
+    "launchServicesScriptUri": "[uri(parameters('_artifactsLocation'), concat('ihsscript.sh', parameters('_artifactsLocationSasToken')))]",
+    "nodeDNSName": "[toLower(concat(parameters('IhsHostName'), uniqueString(resourceGroup().id)))]",
+    "nodeNicName": "[concat(parameters('IhsHostName'),'Nic')]",
+    "informaticaNetworkSecurityGroupName": "[toLower(concat('ihsnsg', uniqueString(resourceGroup().id)))]",
+    "imagePublisher": "informatica",
+    "imageOffer": "informatica-1041-server",
+    "osVersion": "informatica-1041-server",
+    "pip?": "[if(equals(parameters('publicIP'), 'yes'), bool('true'), bool('false'))]",
+    "pipObject": {
+      "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('nodeDNSName'))]"
+    }
+  },
+  "resources": [
+    {
+      "condition": "[variables('pip?')]",
+      "name": "[variables('nodeDNSName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[parameters('infaDomainNodeLocation')]",
+      "apiVersion": "2020-04-01",
+      "tags": {
+        "displayName": "publicip",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('nodeDNSName')]"
+        }
+      }
+    },
+    {
+      "name": "[variables('nodeNicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('infaDomainNodeLocation')]",
+      "apiVersion": "2020-04-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('nodeDNSName'))]"
+      ],
+      "tags": {
+        "displayName": "niccard",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[parameters('subnetId')]"
+              },
+              "publicIPAddress": "[if(variables('pip?'), variables('pipObject'), json('null'))]"
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('informaticaNetworkSecurityGroupName'))]"
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('IhsHostName'),'0')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[parameters('infaDomainNodeLocation')]",
+      "tags": {
+        "displayName": "nodevm",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "plan": {
+        "name": "[variables('osVersion')]",
+        "publisher": "[variables('imagePublisher')]",
+        "product": "[variables('imageOffer')]"
+      },
+      "apiVersion": "2019-12-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('nodeDNSName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nodeNicName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('informaticaDomainInstanceType')]"
+        },
+        "osProfile": {
+          "computerName": "[concat(parameters('IhsHostName'),'0')]",
+          "adminUsername": "[parameters('informaticaDomainHostSshUsername')]",
+          "adminPassword": "[parameters('informaticaDomainHostSshPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOffer')]",
+            "sku": "[variables('osVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "InfaihsOSDisk",
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nodeNicName'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "scriptExtension",
+          "type": "extensions",
+          "location": "[parameters('infaDomainNodeLocation')]",
+          "apiVersion": "2019-12-01",
+          "tags": {
+            "displayName": "vmscriptext",
+            "provider": "[toUpper(parameters('informaticaTags').provider)]"
+          },
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('IhsHostName'),'0')]"
+          ],
+
+          "properties": {
+            "publisher": "Microsoft.Azure.Extensions",
+            "type": "CustomScript",
+            "typeHandlerVersion": "2.0",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[variables('launchServicesScriptUri')]"
+              ]
+            },
+            "protectedSettings": {
+              "commandToExecute": "[concat('./ihsscript.sh',' ',parameters('IHSNodeCount'))]"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "ihsip0": {
+      "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', variables('nodeNicName')),'2020-04-01')]",
+      "type": "object"
+    },
+    "PrivateDnsName": {
+      "type": "string",
+      "value": "[parameters('IhsHostName') ]"
+    }
+  }
+}

@@ -1,0 +1,225 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "informaticaTags": {
+      "type": "object"
+    },
+    "informaticaNetworkSecurityGroupName": {
+      "type": "string"
+    },
+    "sqlServerUsername": {
+      "type": "string"
+    },
+    "dbName": {
+      "type": "string"
+    },
+    "publicIP": {
+      "type": "string"
+    },
+    "dbVMName": {
+      "type": "string"
+    },
+    "dbVMSize": {
+      "type": "string"
+    },
+    "sqlServerPassword": {
+      "type": "securestring"
+    },
+    "sqlServerDeployLocation": {
+      "type": "string"
+    },
+    "subnetId": {
+      "type": "string"
+    },
+    "_artifactsLocation": {
+      "type": "string"
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring"
+    }
+  },
+  "variables": {
+    "publicDNSName": "[toLower(concat(parameters('dbVMName'), uniqueString(resourceGroup().id, deployment().name)))]",
+    "dbVMNicName": "[concat(parameters('dbVMName'), 'Nic')]",
+    "extScriptURI": "[uri(parameters('_artifactsLocation'), concat('databaseconfig.ps1', parameters('_artifactsLocationSasToken')))]",
+    "extScriptFile": "databaseconfig.ps1",
+    "imageOffer": "informatica-1041-database",
+    "imagePublisher": "informatica",
+    "osVersion": "informatica-1041-database",
+    "sqlPortNumber": "1433",
+    "sqlConnectivityType": "Private",
+    "dbUsername": "domaiuser",
+    "dbPassword": "[parameters('sqlServerPassword')]",
+    "pip?": "[if(equals(parameters('publicIP'), 'yes'), bool('true'), bool('false'))]",
+    "pipObject": {
+      "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicDNSName'))]"
+    }
+  },
+  "resources": [
+    {
+      "condition": "[variables('pip?')]",
+      "name": "[variables('publicDNSName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[parameters('sqlServerDeployLocation')]",
+      "apiVersion": "2020-04-01",
+      "tags": {
+        "displayName": "dbpublicip",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic"
+      }
+    },
+    {
+      "name": "[variables('dbVMNicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('sqlServerDeployLocation')]",
+      "apiVersion": "2020-04-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('publicDNSName'))]"
+      ],
+      "tags": {
+        "displayName": "dbniccard",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[parameters('SubnetId')]"
+              },
+              "publicIPAddress": "[if(variables('pip?'), variables('pipObject'), json('null'))]"
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('informaticaNetworkSecurityGroupName'))]"
+        }
+      }
+    },
+    {
+      "name": "[parameters('dbVMName')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[parameters('sqlServerDeployLocation')]",
+      "apiVersion": "2019-12-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', variables('dbVMNicName'))]"
+      ],
+      "tags": {
+        "displayName": "dbvm",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "plan": {
+        "name": "[variables('osVersion')]",
+        "publisher": "[variables('imagePublisher')]",
+        "product": "[variables('imageOffer')]"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('dbVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('dbVMName')]",
+          "adminUsername": "[parameters('sqlServerUsername')]",
+          "adminPassword": "[parameters('sqlServerPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOffer')]",
+            "sku": "[variables('osVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "InfadbOSDisk",
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('dbVMNicName'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "ScriptExtDB",
+          "type": "extensions",
+          "location": "[parameters('sqlServerDeployLocation')]",
+          "apiVersion": "2019-12-01",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('dbVMName'))]"
+          ],
+          "tags": {
+            "displayName": "informaticadbextension",
+            "provider": "[toUpper(parameters('informaticaTags').provider)]"
+          },
+          "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.10",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[variables('extScriptURI')]"
+              ]
+            },
+            "protectedSettings": {
+              "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', variables('extScriptFile'), ' -osUsername \"', parameters('sqlServerUsername'), '\" -osPassword \"', parameters('sqlServerPassword'), '\" -dbUsername \"', variables('dbUsername'), '\" -dbPassword \"', variables('dbPassword'), '\" -dbName \"', parameters('dbName'), '\"')]"
+            }
+          }
+        },
+        {
+          "apiVersion": "2019-12-01",
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "name": "[concat(parameters('dbVMName'), '/SqlIaasExtension')]",
+          "location": "[parameters('sqlServerDeployLocation')]",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('dbVMName'))]",
+            "ScriptExtDB"
+          ],
+          "properties": {
+            "type": "SqlIaaSAgent",
+            "publisher": "Microsoft.SqlServer.Management",
+            "typeHandlerVersion": "2.0",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "AutoTelemetrySettings": {
+                "Region": "[parameters('sqlServerDeployLocation')]"
+              },
+              "KeyVaultCredentialSettings": {
+                "Enable": false
+              },
+              "ServerConfigurationsManagementSettings": {
+                "SQLConnectivityUpdateSettings": {
+                  "ConnectivityType": "[variables('sqlConnectivityType')]",
+                  "Port": "[variables('sqlPortNumber')]"
+                }
+              }
+            },
+            "protectedSettings": {
+              "SQLAuthUpdateUserName": "[parameters('sqlServerUsername')]",
+              "SQLAuthUpdatePassword": "[parameters('sqlServerPassword')]"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "networkInterface": {
+      "value": "[reference(resourceId('Microsoft.Network/networkInterfaces', variables('dbVMNicName')),'2020-04-01')]",
+      "type": "object"
+    }
+  }
+}

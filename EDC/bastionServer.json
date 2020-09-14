@@ -1,0 +1,179 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string"
+    },
+    "subnetId": {
+      "type": "string"
+    },
+    "nsgName": {
+      "type": "string"
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring"
+    },
+    "bastionServerUser": {
+      "type": "string"
+    },
+    "bastionServerPassword": {
+      "type": "securestring"
+    },
+    "informaticaTags": {
+      "type": "object"
+    },
+    "_artifactsLocation": {
+      "type": "string"
+    },
+    "nodeVMSize": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "bastionServer": "BastionServer",
+    "nodeVMDNSName": "[toLower(concat(variables('bastionServer'),  uniqueString(resourceGroup().id)))]",
+    "nodeVMNicPrefix": "[concat(variables('bastionServer'),'Nic')]",
+    "extScriptURI": "[uri(parameters('_artifactsLocation'),concat('wininfainstaller.ps1', parameters('_artifactsLocationSasToken')))]",
+    "extScriptFile": "wininfainstaller.ps1",
+    "imagePublisher": "informatica",
+    "imageOffer": "informatica-1040-windows",
+    "osVersion": "informatica-1040-windows"
+  },
+  "resources": [
+    {
+      "name": "[variables('nodeVMDNSName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "[parameters('location')]",
+      "apiVersion": "2020-04-01",
+      "tags": {
+        "displayName": "publicip",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('nodeVMDNSName')]"
+        }
+      }
+    },
+    {
+      "name": "[variables('nodeVMNicPrefix')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('location')]",
+      "apiVersion": "2020-04-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('nodeVMDNSName'))]"
+      ],
+      "tags": {
+        "displayName": "niccard",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[parameters('subnetId')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('nodeVMDNSName'))]"
+              }
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgName'))]"
+        }
+      }
+    },
+    {
+      "name": "[variables('bastionServer')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[parameters('location')]",
+      "apiVersion": "2019-12-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nodeVMNicPrefix'))]"
+      ],
+      "plan": {
+        "name": "[variables('osVersion')]",
+        "publisher": "[variables('imagePublisher')]",
+        "product": "[variables('imageOffer')]"
+      },
+      "tags": {
+        "displayName": "nodevm",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('nodeVMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('bastionServer')]",
+          "adminUsername": "[parameters('bastionServerUser')]",
+          "adminPassword": "[parameters('bastionServerPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('10202imageOffer')]",
+            "sku": "[variables('10202osVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "BastionOSDisk",
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nodeVMNicPrefix'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "ScriptExtGVM",
+          "type": "extensions",
+          "location": "[parameters('location')]",
+          "apiVersion": "2019-12-01",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', variables('bastionServer'))]"
+          ],
+          "tags": {
+            "displayName": "informaticaextension",
+            "provider": "[toUpper(parameters('informaticaTags').provider)]"
+          },
+          "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.10",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[variables('extScriptURI')]"
+              ]
+            },
+            "protectedSettings": {
+              "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -file ', variables('extScriptFile'))]"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "fqdn": {
+      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses',variables('nodeVMDNSName')), '2020-04-01').dnsSettings.fqdn]",
+      "type": "string"
+    }
+  }
+}

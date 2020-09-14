@@ -1,0 +1,371 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "basics": [
+    ],
+    "steps": [
+      {
+        "label": "Informatica Enterprise Data Catalog",
+        "name": "infaDomainConfiguration",
+        "subLabel": {
+          "preValidation": "Configure Settings",
+          "postValidation": "Done"
+        },
+        "bladeTitle": "Informatica Enterprise Data Catalog",
+        "elements": [
+          {
+            "name": "infaDomainLicense",
+            "type": "Microsoft.Common.FileUpload",
+            "label": "Informatica License Key",
+            "toolTip": "Provide a valid Informatica Enterpise Data Catalog License key file.",
+            "constraints": {
+              "required": true,
+              "accept": ".key"
+            },
+            "options": {
+              "multiple": false,
+              "uploadMode": "url",
+              "openMode": "text",
+              "encoding": "UTF-8"
+            },
+            "visible": true
+          },
+          {
+            "name": "informaticaDomainInstanceType",
+            "type": "Microsoft.Compute.SizeSelector",
+            "label": "Informatica Server",
+            "toolTip": "select size for the Informatica Server ",
+            "recommendedSizes": [
+              "Standard_DS5_v2"
+            ],
+            "constraints": {
+              "allowedSizes": [
+                "Standard_D5_v2",
+                "Standard_DS5_v2",
+                "Standard_E16_v3",
+                "Standard_D14_v2"
+              ]
+            },
+            "osPlatform": "linux",
+            "imageReference": {
+              "publisher": "informatica",
+              "offer": "informatica-1040",
+              "sku": "informatica-1040-server"
+            },
+            "visible": true
+          },
+          {
+            "name": "dbVMSize",
+            "type": "Microsoft.Compute.SizeSelector",
+            "label": "Database Server",
+            "toolTip": "Select size for the Informatica Database",
+            "recommendedSizes": [
+              "Standard_D3_v2"
+            ],
+            "constraints": {
+              "allowedSizes": [
+                "Standard_D3_v2",
+                "Standard_DS3_v2",
+                "Standard_D3"
+              ]
+            },
+            "osPlatform": "linux",
+            "imageReference": {
+              "publisher": "informatica",
+              "offer": "informatica-1041-database",
+              "sku": "informatica-1041-database"
+            },
+            "visible": true
+          },
+          {
+            "name": "clusterSize",
+            "type": "Microsoft.Common.DropDown",
+            "toolTip": "Select the type of Metadata Cluster (Informatica Embedded Hadoop cluster). The type defines the following cluster sizes: Metadata Cluster - Small (single node); Medium (three nodes); or Large (six nodes)",
+            "defaultValue": "Small",
+            "label": "Informatica Embedded Hadoop Cluster Deployment Type",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                {
+                  "label": "Small",
+                  "value": "low"
+                },
+                {
+                  "label": "Medium",
+                  "value": "medium"
+                },
+                {
+                  "label": "Large",
+                  "value": "high"
+                }
+              ]
+            }
+          },
+          {
+            "name": "ihssizelow",
+            "type": "Microsoft.Compute.SizeSelector",
+            "label": "Embedded Hadoop Cluster Virtual Machine Size",
+            "toolTip": "Select virtual machine size for Informatica embedded Hadoop Cluster",
+            "recommendedSizes": [
+              "Standard_DS5_v2"
+            ],
+            "constraints": {
+              "allowedSizes": [
+                "Standard_D5_v2",
+                "Standard_DS5_v2",
+                "Standard_E16_v3",
+                "Standard_D14_v2"
+              ]
+            },
+            "osPlatform": "linux",
+            "imageReference": {
+              "publisher": "informatica",
+              "offer": "informatica-1040",
+              "sku": "informatica-1040-server"
+            },
+            "visible": "[equals(steps('infaDomainConfiguration').clusterSize, 'low')]"
+          },
+          {
+            "name": "ihssizemedium",
+            "type": "Microsoft.Compute.SizeSelector",
+            "label": "Embedded Hadoop Cluster Virtual Machine Size",
+            "toolTip": "Select virtual machine size for Informatica embedded Hadoop Cluster",
+            "recommendedSizes": [
+              "Standard_D4_v2"
+            ],
+            "constraints": {
+              "allowedSizes": [
+                "Standard_D4_v2",
+                "Standard_DS4_v2",
+                "Standard_E16_v3",
+                "Standard_D14_v2",
+                "Standard_DS5_v2",
+                "Standard_D5_v2"
+              ]
+            },
+            "osPlatform": "linux",
+            "imageReference": {
+              "publisher": "informatica",
+              "offer": "informatica-1040",
+              "sku": "informatica-1040-server"
+            },
+            "count": "3",
+            "visible": "[equals(steps('infaDomainConfiguration').clusterSize, 'medium')]"
+          },
+          {
+            "name": "ihssizehigh",
+            "type": "Microsoft.Compute.SizeSelector",
+            "label": "Embedded Hadoop Cluster Virtual Machine Size",
+            "toolTip": "Select virtual machine size for Informatica embedded Hadoop Cluster",
+            "recommendedSizes": [
+              "Standard_D4_v2"
+            ],
+            "constraints": {
+              "allowedSizes": [
+                "Standard_D4_v2",
+                "Standard_DS4_v2",
+                "Standard_E16_v3",
+                "Standard_D14_v2",
+                "Standard_DS5_v2",
+                "Standard_D5_v2"
+              ]
+            },
+            "osPlatform": "linux",
+            "imageReference": {
+              "publisher": "informatica",
+              "offer": "informatica-1040",
+              "sku": "informatica-1040-server"
+            },
+            "count": "6",
+            "visible": "[equals(steps('infaDomainConfiguration').clusterSize, 'high')]"
+          },
+          {
+            "name": "highavAilability",
+            "type": "Microsoft.Common.OptionsGroup",
+            "label": "Informatica High Availability",
+            "defaultValue": "Disable",
+            "toolTip": "Enable or Disable high availability for Informatica deployment.",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Enable",
+                  "value": "yes"
+                },
+                {
+                  "label": "Disable",
+                  "value": "no"
+                }
+              ]
+            },
+            "visble": true
+          },
+          {
+            "name": "password",
+            "type": "Microsoft.Common.PasswordBox",
+            "toolTip": "Provide the password to access the Informatica server, Database server, and Informatica Embedded Hadoop cluster. You can also access the Informatica Administrator console, cluster login, and all databases.",
+            "label": {
+              "password": "Password",
+              "confirmPassword": "Confirm Password"
+            },
+            "constraints": {
+              "required": true,
+              "regex": "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[^\\s\\w])(?!.*[\"$]).{12,123}$",
+              "validationMessage": "Password must be at least 12 characters in length. Should contain at least one special character, number, upper-case and lower-case character. Double quote(\") and dollar($) is not allowed"
+            },
+            "options": {
+              "hideConfirmation": false
+            }
+          }
+        ]
+      },
+      {
+        "label": "Bastion Server",
+        "name": "bastionServer",
+        "subLabel": {
+          "preValidation": "Configure Bastion server settings",
+          "postValidation": "Done"
+        },
+        "bladeTitle": "Bastion Server for Informatica",
+        "elements": [
+          {
+            "name": "infaBastionSever",
+            "type": "Microsoft.Common.OptionsGroup",
+            "label": "Deploy Bastion Server",
+            "toolTip": "Select Yes to deploy a bastion server to access other resources in the vnet.",
+            "defaultValue": "No",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Yes",
+                  "value": "yes"
+                },
+                {
+                  "label": "No",
+                  "value": "no"
+                }
+              ]
+            },
+            "visible": true
+          },
+          {
+            "name": "bastionSize",
+            "type": "Microsoft.Compute.SizeSelector",
+            "label": "Bastion Server Size",
+            "toolTip": "Choose bastion server size",
+            "recommendedSizes": [
+              "Standard_D2_v2"
+            ],
+            "constraints": {
+              "allowedSizes": [
+                "Standard_D2_v2",
+                "Standard_A2_v2",
+                "Standard_DS2_v2",
+                "Standard_B2s"
+              ]
+            },
+            "osPlatform": "Windows",
+            "count": 1,
+            "visible": "[equals(steps('bastionServer').infaBastionSever, 'yes')]"
+          }
+        ]
+      },
+      {
+        "name": "infraConfiguration",
+        "label": "Infrastructure Settings",
+        "subLabel": {
+          "preValidation": "Configure VNET and IP Address settings",
+          "postValidation": "Done"
+        },
+        "bladeTitle": "Infrastructure Settings",
+        "elements": [
+          {
+            "name": "allowedIpRange",
+            "type": "Microsoft.Common.TextBox",
+            "label": "CIDR IP Address Range",
+            "toolTip": "The CIDR public IP address range that you can use to access the Informatica Server host. For example: 108.124.81.10/32",
+            "constraints": {
+              "required": true,
+              "regex": "(^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/([1-9]|[1-2][0-9]|3[0-2]))$)",
+              "validationMessage": "The value should be in CIDR IP format. For example: 108.124.81.10/32"
+            }
+          },
+          {
+            "name": "publicIP",
+            "type": "Microsoft.Common.OptionsGroup",
+            "label": "Assign Public IP Address",
+            "toolTip": "Select Yes if you want to assign public IP Address to Virtual machines",
+            "defaultValue": "Yes",
+            "constraints": {
+              "allowedValues": [
+                {
+                  "label": "Yes",
+                  "value": "yes"
+                },
+                {
+                  "label": "No",
+                  "value": "no"
+                }
+              ]
+            },
+            "visible": true
+          },
+          {
+            "name": "infavnet",
+            "type": "Microsoft.Network.VirtualNetworkCombo",
+            "label": {
+              "virtualNetwork": "Virtual network",
+              "subnets": "Subnets"
+            },
+            "toolTip": {
+              "virtualNetwork": "Select the existing virtual network based on the subscription and location or create a new virtual network. You can create connections between Azure resources using Virtual Networks (VNet). The Azure Virtual Network service helps you create secure connections between Azure resources. A VNet represents the network in the cloud and you can connect VNets to on-premises networks.",
+              "subnets": "Select the subnets that must include all resources such as cluster components and virtual machines."
+            },
+            "defaultValue": {
+              "name": "InfaVNET",
+              "addressPrefixSize": "/16"
+            },
+            "constraints": {
+              "minAddressPrefixSize": "/30"
+            },
+            "subnets": {
+              "subnet1": {
+                "label": "Subnet",
+                "defaultValue": {
+                  "name": "InfaSubnet",
+                  "addressPrefixSize": "/24"
+                },
+                "constraints": {
+                  "minAddressPrefixSize": "/30",
+                  "minAddressCount": 15,
+                  "requireContiguousAddresses": true
+                }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "informaticaLicenseFullPath": "[steps('infaDomainConfiguration').infaDomainLicense]",
+      "loadType": "[steps('infaDomainConfiguration').clusterSize]",
+      "allowedIpRange": "[steps('infraConfiguration').allowedIpRange]",
+      "publicIP": "[steps('infraConfiguration').publicIP]",
+      "vnetExistingOrNew": "[steps('infraConfiguration').infavnet.newOrExisting]",
+      "vnetRG": "[steps('infraConfiguration').infavnet.resourceGroup]",
+      "informaticaVirtualNetworkName": "[steps('infraConfiguration').infavnet.name]",
+      "vnetAddressPrefix": "[steps('infraConfiguration').infavnet.addressPrefixes]",
+      "informaticaSubnetName": "[steps('infraConfiguration').infavnet.subnets.subnet1.name]",
+      "subnetPrefix": "[steps('infraConfiguration').infavnet.subnets.subnet1.addressPrefix]",
+      "dbVMSize": "[steps('infaDomainConfiguration').dbVMSize]",
+      "BastionServer": "[steps('bastionServer').infaBastionSever]",
+      "BastionServerSize": "[steps('bastionServer').bastionSize]",
+      "ihsvmsize": "[coalesce(steps('infaDomainConfiguration').ihssizelow,steps('infaDomainConfiguration').ihssizemedium,steps('infaDomainConfiguration').ihssizehigh)]",
+      "HighAvailability": "[steps('infaDomainConfiguration').highavAilability]",
+      "informaticaDomainInstanceType": "[steps('infaDomainConfiguration').informaticaDomainInstanceType]",
+      "password": "[steps('infaDomainConfiguration').password]"
+    }
+  }
+}

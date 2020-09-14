@@ -1,0 +1,70 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vnetLocation": {
+      "type": "string"
+    },
+    "informaticaVirtualNetworkName": {
+      "type": "string"
+    },
+    "informaticaVirtualNetworkAddressPrefix": {
+      "type": "array"
+    },
+    "informaticaSubnetName": {
+      "type": "string"
+    },
+    "informaticaSubnetAddressPrefix": {
+      "type": "string"
+    },
+    "vnetRG": {
+      "type": "string"
+    },
+    "informaticaTags": {
+      "type": "object"
+    },
+    "vnetExistingOrNew": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "vnetId": "[resourceId(parameters('vnetRG'), 'Microsoft.Network/virtualNetworks', parameters('informaticaVirtualNetworkName'))]",
+    "subnetId": "[resourceId(parameters('vnetRG'),'Microsoft.Network/virtualNetworks/subnets',parameters('informaticaVirtualNetworkName'),parameters('informaticaSubnetName'))]"
+  },
+  "resources": [
+    {
+      "name": "[parameters('informaticaVirtualNetworkName')]",
+      "condition": "[equals(parameters('vnetExistingOrNew'), 'new')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[parameters('vnetLocation')]",
+      "apiVersion": "2020-04-01",
+      "tags": {
+        "displayName": "vnet",
+        "provider": "[toUpper(parameters('informaticaTags').provider)]"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": "[parameters('informaticaVirtualNetworkAddressPrefix')[0]]"
+        },
+        "subnets": [
+          {
+            "name": "[parameters('informaticaSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('informaticaSubnetAddressPrefix')]"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "vnetId": {
+      "value": "[variables('vnetId')]",
+      "type": "string"
+    },
+    "subnetId": {
+      "value": "[variables('subnetId')]",
+      "type": "string"
+    }
+  }
+}
