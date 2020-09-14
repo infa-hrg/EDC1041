@@ -1,0 +1,685 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "defaultValue": "[resourceGroup().location]",
+      "type": "string",
+      "metadata": {
+        "description": "The location where all azure resources will be deployed."
+      }
+    },
+    "informaticaLicenseFullPath": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Provide a valid Informatica Enterpise Data Catalog License key file."
+      }
+    },
+    "allowedIpRange": {
+      "type": "string",
+      "metadata": {
+        "description": "CIDR IP range that is permitted to access Informatica domain. The default value '*' allows access to all IPs."
+      }
+    },
+    "loadType": {
+      "type": "string",
+      "allowedValues": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "metadata": {
+        "description": "Internal cluster nodes- low (1 node), medium (3 nodes), high (6 nodes)."
+      }
+    },
+    "vnetExistingOrNew": {
+      "type": "string",
+      "allowedValues": [
+        "existing",
+        "new"
+      ],
+      "metadata": {
+        "description": "VNET new or existing"
+      }
+    },
+    "vnetRG": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().name]",
+      "metadata": {
+        "description": "Existing VNET resource group name"
+      }
+    },
+    "informaticaVirtualNetworkName": {
+      "type": "string",
+      "metadata": {
+        "description": "Select the existing virtual network based on the subscription and location or create a new virtual network."
+      }
+    },
+    "vnetAddressPrefix": {
+      "type": "array",
+      "metadata": {
+        "description": "VNET address prefix."
+      }
+    },
+    "informaticaSubnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Select the subnets that must include all resources."
+      }
+    },
+    "subnetPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Subnet address prefix."
+      }
+    },
+    "_artifactsLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "The base URI where artifacts required by this template are located including a trailing '/'"
+      },
+      "defaultValue": "[deployment().properties.templateLink.uri]"
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated. Use the defaultValue if the staging location is not secured."
+      },
+      "defaultValue": ""
+    },
+    "informaticaTags": {
+      "type": "object",
+      "defaultValue": {
+        "provider": "AACF690D-C725-4C78-9B1E-E586595B369F"
+      }
+    },
+    "informaticaDomainInstanceType": {
+      "type": "string",
+      "metadata": {
+        "description": "Informatica Server VM Size"
+      }
+    },
+    "ihsvmsize": {
+      "type": "string",
+      "metadata": {
+        "description": "IHS VM Size"
+      }
+    },
+    "dbVMSize": {
+      "type": "string",
+      "metadata": {
+        "description": "Database VM Size"
+      }
+    },
+    "HighAvailability": {
+      "type": "string",
+      "metadata": {
+        "description": "Informatica High Availability"
+      }
+    },
+    "publicIP": {
+      "type": "string",
+      "metadata": {
+        "description": "Assign public IP address to virtual machine."
+      }
+    },
+    "password": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for virtual machine and Informatica services."
+      }
+    },
+    "BastionServer": {
+      "type": "string",
+      "metadata": {
+        "description": "Bastion Server is required or not."
+      }
+    },
+    "BastionServerSize": {
+      "type": "string",
+      "metadata": {
+        "description": "Size of the Bastion Server."
+      },
+      "defaultValue": ""
+    }
+  },
+  "variables": {
+    "NodeCount": {
+      "low": 0,
+      "medium": 2,
+      "high": 5
+    },
+    "IHSInstanceType": "[if(equals(parameters('loadtype'),'low'), parameters('informaticaDomainInstanceType'), parameters('ihsvmsize'))]",
+    "IHSNodeCount": "[variables('NodeCount')[parameters('loadType')]]",
+    "infaDomainNodeDeployTemplateUri": "[uri(parameters('_artifactsLocation'), concat('infadomainnodedeploy.json', parameters('_artifactsLocationSasToken')))]",
+    "infaDomainHANodeDeployTemplateUri": "[uri(parameters('_artifactsLocation'), concat('informaticaHAnode.json', parameters('_artifactsLocationSasToken')))]",
+    "ihslow": "[uri(parameters('_artifactsLocation'), concat('singleihsnodedeploy.json', parameters('_artifactsLocationSasToken')))]",
+    "ihshigh": "[uri(parameters('_artifactsLocation'), concat('ihsnodedeploy.json', parameters('_artifactsLocationSasToken')))]",
+    "ihsDeployTemplateUri": "[if(equals(parameters('loadtype'),'low'), variables('ihslow'), variables('ihshigh'))]",
+    "ihsloadtypeoutput": "[if(equals(parameters('loadtype'),'low'), 'ihslow', 'ihshigh')]",
+    "osVersion": "informatica-1041-server",
+    "imagePublisher": "informatica",
+    "imageOffer": "informatica-1041-server",
+    "informaticaNetworkSecurityGroupName": "[toLower(concat('infansg', uniqueString(resourceGroup().id)))]",
+    "nsgDeployTemplateUri": "[uri(parameters('_artifactsLocation'), concat('networksecuritygroupdeploy.json', parameters('_artifactsLocationSasToken')))]",
+    "ihsnsgDeployTemplateUri": "[uri(parameters('_artifactsLocation'), concat('ihsnsggroup.json', parameters('_artifactsLocationSasToken')))]",
+    "sqlDbDeployUri": "[uri(parameters('_artifactsLocation'), concat('database.json', parameters('_artifactsLocationSasToken')))]",
+    "virtualNetworkDeployTemplateUri": "[uri(parameters('_artifactsLocation'), concat('virtualnetworkdeploynew.json', parameters('_artifactsLocationSasToken')))]",
+    "informaticaSubnetAddressPrefix": "[parameters('subnetPrefix')]",
+    "bastionServerUri": "[uri(parameters('_artifactsLocation'), concat('bastionServer.json', parameters('_artifactsLocationSasToken')))]",
+    "informaticaDomainHostSshUsername": "infauser",
+    "informaticaAdministratorUsername": "[variables('informaticaDomainHostSshUsername')]",
+    "informaticaAdministratorPassword": "[parameters('password')]",
+    "informaticaDomainHostSshPassword": "[variables('informaticaAdministratorPassword')]",
+    "bastionServerUser": "[variables('informaticaDomainHostSshUsername')]",
+    "bastionServerPassword": "[variables('informaticaAdministratorPassword')]",
+    "sqlServerUsername": "[variables('informaticaDomainHostSshUsername')]",
+    "sqlServerPassword": "[variables('informaticaAdministratorPassword')]",
+    "dbVMName": "infadb",
+    "informaticaDomainHostName": "infaserver",
+    "IhsHostName": "infaihs",
+    "domainDbName": "domaindb"
+  },
+  "resources": [
+    {
+      "apiVersion": "2020-06-01",
+      "name": "pid-c859347c-567f-5f1b-ab62-364699ea1546",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": []
+        }
+      }
+    },
+    {
+      "name": "vnetSetup",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('virtualNetworkDeployTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "informaticaSubnetAddressPrefix": {
+            "value": "[variables('informaticaSubnetAddressPrefix')]"
+          },
+          "informaticaSubnetName": {
+            "value": "[parameters('informaticaSubnetName')]"
+          },
+          "informaticaTags": {
+            "value": "[parameters('informaticaTags')]"
+          },
+          "informaticaVirtualNetworkAddressPrefix": {
+            "value": [ "[parameters('vnetAddressPrefix')]" ]
+          },
+          "informaticaVirtualNetworkName": {
+            "value": "[parameters('informaticaVirtualNetworkName')]"
+          },
+          "vnetExistingOrNew": {
+            "value": "[parameters('vnetExistingOrNew')]"
+          },
+          "vnetLocation": {
+            "value": "[parameters('location')]"
+          },
+          "vnetRG": {
+            "value": "[parameters('vnetRG')]"
+          }
+        }
+      }
+    },
+    {
+      "name": "nsgSetup",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('nsgDeployTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "networkSecurityGroupLocation": {
+            "value": "[parameters('location')]"
+          },
+          "informaticaNetworkSecurityGroupName": {
+            "value": "[variables('informaticaNetworkSecurityGroupName')]"
+          },
+          "allowedIpRange": {
+            "value": "[parameters('allowedIpRange')]"
+          },
+          "informaticaTags": {
+            "value": "[parameters('informaticaTags')]"
+          }
+        }
+      }
+    },
+    {
+      "name": "ihsnsgSetup",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('ihsnsgDeployTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "networkSecurityGroupLocation": {
+            "value": "[parameters('location')]"
+          },
+          "allowedIpRange": {
+            "value": "[parameters('allowedIpRange')]"
+          },
+          "informaticaTags": {
+            "value": "[parameters('informaticaTags')]"
+          }
+        }
+      }
+    },
+    {
+      "name": "ihsNodeSetup",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "dependsOn": [
+        "Microsoft.Resources/deployments/ihsnsgSetup",
+        "Microsoft.Resources/deployments/vnetSetup"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('ihsDeployTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "infaDomainNodeLocation": {
+            "value": "[parameters('location')]"
+          },
+          "publicIP": {
+            "value": "[parameters('publicIP')]"
+          },
+          "informaticaDomainInstanceType": {
+            "value": "[variables('IHSInstanceType')]"
+          },
+          "informaticaDomainHostSshUsername": {
+            "value": "[variables('informaticaDomainHostSshUsername')]"
+          },
+          "informaticaDomainHostSshPassword": {
+            "value": "[variables('informaticaDomainHostSshPassword')]"
+          },
+          "subnetId": {
+            "value": "[reference('vnetSetup').outputs.subnetId.value]"
+          },
+          "informaticaTags": {
+            "value": "[parameters('informaticaTags')]"
+          },
+          "IHSNodeCount": {
+            "value": "[variables('IHSNodeCount')]"
+          },
+          "_artifactsLocation": {
+            "value": "[parameters('_artifactsLocation')]"
+          },
+          "_artifactsLocationSasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "IhsHostName": {
+            "value": "[variables('IhsHostName')]"
+          }
+        }
+      }
+    },
+    {
+      "name": "dbSetup",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "dependsOn": [
+        "Microsoft.Resources/deployments/nsgSetup",
+        "Microsoft.Resources/deployments/vnetSetup"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('sqlDbDeployUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "sqlServerPassword": {
+            "value": "[variables('sqlServerPassword')]"
+          },
+          "publicIP": {
+            "value": "[parameters('publicIP')]"
+          },
+          "sqlServerDeployLocation": {
+            "value": "[parameters('location')]"
+          },
+          "sqlServerUsername": {
+            "value": "[variables('sqlServerUsername')]"
+          },
+          "dbName": {
+            "value": "[variables('domainDbName')]"
+          },
+          "informaticaTags": {
+            "value": "[parameters('informaticaTags')]"
+          },
+          "dbVMName": {
+            "value": "[variables('dbVMName')]"
+          },
+          "dbVMSize": {
+            "value": "[parameters('dbVMSize')]"
+          },
+          "subnetId": {
+            "value": "[reference('vnetSetup').outputs.subnetId.value]"
+          },
+          "informaticaNetworkSecurityGroupName": {
+            "value": "[variables('informaticaNetworkSecurityGroupName')]"
+          },
+          "_artifactsLocation": {
+            "value": "[parameters('_artifactsLocation')]"
+          },
+          "_artifactsLocationSasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          }
+        }
+      }
+    },
+    {
+      "condition": "[equals(parameters('BastionServer'), 'yes')]",
+      "name": "bastionSetup",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "dependsOn": [
+        "Microsoft.Resources/deployments/vnetSetup",
+        "Microsoft.Resources/deployments/nsgSetup"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('bastionServerUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "subnetId": {
+            "value": "[reference('vnetSetup').outputs.subnetId.value]"
+          },
+          "nsgName": {
+            "value": "[variables('informaticaNetworkSecurityGroupName')]"
+          },
+          "informaticaTags": {
+            "value": "[parameters('informaticaTags')]"
+          },
+          "bastionServerUser": {
+            "value": "[variables('bastionServerUser')]"
+          },
+          "bastionServerPassword": {
+            "value": "[variables('bastionServerPassword')]"
+          },
+          "_artifactsLocationSasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "_artifactsLocation": {
+            "value": "[parameters('_artifactsLocation')]"
+          },
+          "nodeVMSize": {
+            "value": "[parameters('BastionServerSize')]"
+          }
+        }
+      }
+    },
+    {
+      "name": "infaDomainNodeSetup",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "dependsOn": [
+        "Microsoft.Resources/deployments/vnetSetup",
+        "Microsoft.Resources/deployments/nsgSetup",
+        "Microsoft.Resources/deployments/ihsnsgSetup",
+        "Microsoft.Resources/deployments/ihsNodeSetup",
+        "Microsoft.Resources/deployments/dbSetup"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('infaDomainNodeDeployTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "infaDomainNodeLocation": {
+            "value": "[parameters('location')]"
+          },
+          "informaticaDomainHostName": {
+            "value": "[variables('informaticaDomainHostName')]"
+          },
+          "informaticaDomainInstanceType": {
+            "value": "[parameters('informaticaDomainInstanceType')]"
+          },
+          "informaticaDomainHostSshUsername": {
+            "value": "[variables('informaticaDomainHostSshUsername')]"
+          },
+          "informaticaDomainHostSshPassword": {
+            "value": "[variables('informaticaDomainHostSshPassword')]"
+          },
+          "subnetId": {
+            "value": "[reference('vnetSetup').outputs.subnetId.value]"
+          },
+          "informaticaNetworkSecurityGroupName": {
+            "value": "[variables('informaticaNetworkSecurityGroupName')]"
+          },
+          "informaticaLicenseFullPath": {
+            "value": "[parameters('informaticaLicenseFullPath')]"
+          },
+          "sqlServerPassword": {
+            "value": "[variables('sqlServerPassword')]"
+          },
+          "sqlServerName": {
+            "value": "[reference('dbSetup').outputs.networkInterface.value.ipConfigurations[0].properties.privateIPAddress]"
+          },
+          "ihsip0": {
+            "value": "[reference('ihsNodeSetup').outputs.ihsip0.value.ipConfigurations[0].properties.privateIPAddress]"
+          },
+          "ihsip1": {
+            "value": "[if(equals(variables('ihsloadtypeoutput'),'ihshigh'), reference('ihsNodeSetup').outputs.ihsip1.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "ihsip2": {
+            "value": "[if(equals(variables('ihsloadtypeoutput'),'ihshigh'), reference('ihsNodeSetup').outputs.ihsip2.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "ihsip3": {
+            "value": "[if(equals(parameters('loadType'),'high'), reference('ihsNodeSetup').outputs.ihsip3.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "ihsip4": {
+            "value": "[if(equals(parameters('loadType'),'high'), reference('ihsNodeSetup').outputs.ihsip4.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "ihsip5": {
+            "value": "[if(equals(parameters('loadType'),'high'), reference('ihsNodeSetup').outputs.ihsip5.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "_artifactsLocation": {
+            "value": "[parameters('_artifactsLocation')]"
+          },
+          "_artifactsLocationSasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "informaticaAdministratorUsername": {
+            "value": "[variables('informaticaAdministratorUsername')]"
+          },
+          "informaticaAdministratorPassword": {
+            "value": "[variables('informaticaAdministratorPassword')]"
+          },
+          "loadType": {
+            "value": "[parameters('loadType')]"
+          },
+          "osVersion": {
+            "value": "[variables('osVersion')]"
+          },
+          "imagePublisher": {
+            "value": "[variables('imagePublisher')]"
+          },
+          "imageOffer": {
+            "value": "[variables('imageOffer')]"
+          },
+          "informaticaTags": {
+            "value": "[parameters('informaticaTags')]"
+          },
+          "publicIP": {
+            "value": "[parameters('publicIP')]"
+          },
+          "PrivateDnsName": {
+            "value": "[reference('ihsNodeSetup').outputs.PrivateDnsName.value]"
+          },
+          "HighAvailability": {
+            "value": "[parameters('HighAvailability')]"
+          },
+          "HANode": {
+            "value": "no"
+          }
+        }
+      }
+    },
+    {
+      "condition": "[equals(parameters('HighAvailability'),'yes')]",
+      "name": "infaDomainNodeSetupHA",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-06-01",
+      "dependsOn": [
+        "Microsoft.Resources/deployments/vnetSetup",
+        "Microsoft.Resources/deployments/nsgSetup",
+        "Microsoft.Resources/deployments/ihsnsgSetup",
+        "Microsoft.Resources/deployments/ihsNodeSetup",
+        "Microsoft.Resources/deployments/dbSetup",
+        "Microsoft.Resources/deployments/infaDomainNodeSetup"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('infaDomainHANodeDeployTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "infaDomainNodeLocation": {
+            "value": "[parameters('location')]"
+          },
+          "informaticaDomainHostName": {
+            "value": "[variables('informaticaDomainHostName')]"
+          },
+          "informaticaDomainInstanceType": {
+            "value": "[parameters('informaticaDomainInstanceType')]"
+          },
+          "informaticaDomainHostSshUsername": {
+            "value": "[variables('informaticaDomainHostSshUsername')]"
+          },
+          "informaticaDomainHostSshPassword": {
+            "value": "[variables('informaticaDomainHostSshPassword')]"
+          },
+          "subnetId": {
+            "value": "[reference('vnetSetup').outputs.subnetId.value]"
+          },
+          "informaticaNetworkSecurityGroupName": {
+            "value": "[variables('informaticaNetworkSecurityGroupName')]"
+          },
+          "informaticaLicenseFullPath": {
+            "value": "[parameters('informaticaLicenseFullPath')]"
+          },
+          "sqlServerPassword": {
+            "value": "[variables('sqlServerPassword')]"
+          },
+          "sqlServerName": {
+            "value": "[reference('dbSetup').outputs.networkInterface.value.ipConfigurations[0].properties.privateIPAddress]"
+          },
+          "_artifactsLocation": {
+            "value": "[parameters('_artifactsLocation')]"
+          },
+          "_artifactsLocationSasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "informaticaAdministratorUsername": {
+            "value": "[variables('informaticaAdministratorUsername')]"
+          },
+          "informaticaAdministratorPassword": {
+            "value": "[variables('informaticaAdministratorPassword')]"
+          },
+          "loadType": {
+            "value": "[parameters('loadType')]"
+          },
+          "osVersion": {
+            "value": "[variables('osVersion')]"
+          },
+          "imagePublisher": {
+            "value": "[variables('imagePublisher')]"
+          },
+          "imageOffer": {
+            "value": "[variables('imageOffer')]"
+          },
+          "informaticaTags": {
+            "value": "[parameters('informaticaTags')]"
+          },
+          "publicIP": {
+            "value": "[parameters('publicIP')]"
+          },
+          "PrivateDnsName": {
+            "value": "[reference('ihsNodeSetup').outputs.PrivateDnsName.value]"
+          },
+          "ihsip0": {
+            "value": "[reference('ihsNodeSetup').outputs.ihsip0.value.ipConfigurations[0].properties.privateIPAddress]"
+          },
+          "ihsip1": {
+            "value": "[if(equals(variables('ihsloadtypeoutput'),'ihshigh'), reference('ihsNodeSetup').outputs.ihsip1.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "ihsip2": {
+            "value": "[if(equals(variables('ihsloadtypeoutput'),'ihshigh'), reference('ihsNodeSetup').outputs.ihsip2.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "ihsip3": {
+            "value": "[if(equals(parameters('loadType'),'high'), reference('ihsNodeSetup').outputs.ihsip3.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "ihsip4": {
+            "value": "[if(equals(parameters('loadType'),'high'), reference('ihsNodeSetup').outputs.ihsip4.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "ihsip5": {
+            "value": "[if(equals(parameters('loadType'),'high'), reference('ihsNodeSetup').outputs.ihsip5.value.ipConfigurations[0].properties.privateIPAddress, 'NA')]"
+          },
+          "GatewayIP": {
+            "value": "[reference('infaDomainNodeSetup').outputs.GatewayIP.value.ipConfigurations[0].properties.privateIPAddress]"
+          },
+          "HighAvailability": {
+            "value": "[parameters('HighAvailability')]"
+          },
+          "HANode": {
+            "value": "yes"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "Username": {
+      "type": "string",
+      "value": "[variables('informaticaDomainHostSshUsername')]"
+    },
+    "DatabaseUsers": {
+      "type": "string",
+      "value": "domainuser,mrsuser,wfhuser,pwhuser,cmsuser,analystuser,monitoruser"
+    },
+    "InformaticaAdminConsole_PrivateIP": {
+      "type": "string",
+      "value": "[concat('https://', reference('infaDomainNodeSetup').outputs.GatewayIP.value.ipConfigurations[0].properties.privateIPAddress ,':6005/')]"
+    },
+    "InformaticaAdminConsole_DNS": {
+      "type": "string",
+      "value": "[concat('https://',variables('informaticaDomainHostName') ,':6005/')]"
+    },
+    "InformaticaCatalog_PrivateIP": {
+      "type": "string",
+      "value": "[concat('https://', reference('infaDomainNodeSetup').outputs.GatewayIP.value.ipConfigurations[0].properties.privateIPAddress ,':9085/ldmcatalog')]"
+    },
+    "InformaticaCatalogAdmin_PrivateIP": {
+      "type": "string",
+      "value": "[concat('https://', reference('infaDomainNodeSetup').outputs.GatewayIP.value.ipConfigurations[0].properties.privateIPAddress ,':9085/ldmadmin')]"
+    }
+
+  }
+}
