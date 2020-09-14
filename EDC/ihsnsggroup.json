@@ -110,6 +110,20 @@
                 "priority": 498,
                 "direction": "Outbound"
               }
+            },
+            {
+              "name": "Outboundforstorage",
+              "properties": {
+                "description": "open ports for storage .",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "443",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "52.163.0.0/16",
+                "access": "Allow",
+                "priority": 497,
+                "direction": "Outbound"
+              }
             }
           ]
         }
