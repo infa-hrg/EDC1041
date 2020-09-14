@@ -56,6 +56,20 @@
               }
             },
             {
+              "name": "port_22",
+              "properties": {
+                "description": "Enabling ssh port.",
+                "protocol": "Tcp",
+                "sourcePortRange": "22",
+                "destinationPortRange": "22",
+                "sourceAddressPrefix": "[parameters('allowedIpRange')]",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 105,
+                "direction": "Inbound"
+              }
+            },
+            {
               "name": "DenyAllOutBound",
               "properties": {
                 "description": "Block all internet access.",
@@ -74,7 +88,7 @@
               "properties": {
                 "description": "open internet for CustomScript .",
                 "protocol": "Tcp",
-                "sourcePortRange": "443",
+                "sourcePortRange": "*",
                 "destinationPortRange": "443",
                 "sourceAddressPrefix": "*",
                 "destinationAddressPrefix": "151.101.8.133",

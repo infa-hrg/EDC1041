@@ -101,7 +101,7 @@
             "properties": {
               "description": "open internet for CustomScript .",
               "protocol": "Tcp",
-              "sourcePortRange": "443",
+              "sourcePortRange": "*",
               "destinationPortRange": "443",
               "sourceAddressPrefix": "*",
               "destinationAddressPrefix": "151.101.8.133",
