@@ -86,7 +86,7 @@
             {
               "name": "OutboundforCustomScript",
               "properties": {
-                "description": "open internet for CustomScript .",
+                "description": "open ports for CustomScript .",
                 "protocol": "Tcp",
                 "sourcePortRange": "*",
                 "destinationPortRange": "443",
@@ -94,6 +94,20 @@
                 "destinationAddressPrefix": "151.101.8.133",
                 "access": "Allow",
                 "priority": 499,
+                "direction": "Outbound"
+              }
+            },
+            {
+              "name": "OutboundforVirtualNetwork",
+              "properties": {
+                "description": "open ports for VirtualNetwork .",
+                "protocol": "*",
+                "sourcePortRange": "*",
+                "destinationPortRange": "*",
+                "sourceAddressPrefix": "VirtualNetwork",
+                "destinationAddressPrefix": "VirtualNetwork",
+                "access": "Allow",
+                "priority": 498,
                 "direction": "Outbound"
               }
             }
