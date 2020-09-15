@@ -129,11 +129,11 @@
               "name": "OutboundforNTP1",
               "properties": {
                 "description": "open ports for NTP server.",
-                "protocol": "Tcp",
+                "protocol": "Udp",
                 "sourcePortRange": "*",
-                "destinationPortRange": "443",
+                "destinationPortRange": "123",
                 "sourceAddressPrefix": "*",
-                "destinationAddressPrefix": "203.123.48.219/32",
+                "destinationAddressPrefix": "203.123.0.0/8",
                 "access": "Allow",
                 "priority": 496,
                 "direction": "Outbound"
@@ -143,11 +143,11 @@
               "name": "OutboundforNTP2",
               "properties": {
                 "description": "open ports for NTP server.",
-                "protocol": "Tcp",
+                "protocol": "Udp",
                 "sourcePortRange": "*",
-                "destinationPortRange": "443",
+                "destinationPortRange": "123",
                 "sourceAddressPrefix": "*",
-                "destinationAddressPrefix": "51.79.161.173/32",
+                "destinationAddressPrefix": "51.79.0.0/8",
                 "access": "Allow",
                 "priority": 495,
                 "direction": "Outbound"
@@ -156,26 +156,26 @@
             {
               "name": "OutboundforNTP3",
               "properties": {
-                "description": "open ports for NTP server.",
-                "protocol": "Tcp",
-                "sourcePortRange": "*",
-                "destinationPortRange": "443",
-                "sourceAddressPrefix": "*",
-                "destinationAddressPrefix": "162.159.200.123/32",
                 "access": "Allow",
+                "description": "open ports for NTP server.",
+                "destinationAddressPrefix": "162.159.0.0/8",
+                "destinationPortRange": "123",
+                "direction": "Outbound",
                 "priority": 494,
-                "direction": "Outbound"
+                "protocol": "Udp",
+                "sourceAddressPrefix": "*",
+                "sourcePortRange": "*"
               }
             },
             {
               "name": "OutboundforNTP4",
               "properties": {
                 "description": "open ports for NTP server.",
-                "protocol": "Tcp",
+                "protocol": "Udp",
                 "sourcePortRange": "*",
-                "destinationPortRange": "443",
+                "destinationPortRange": "123",
                 "sourceAddressPrefix": "*",
-                "destinationAddressPrefix": "139.99.91.97/32",
+                "destinationAddressPrefix": "139.99.0.0/8",
                 "access": "Allow",
                 "priority": 493,
                 "direction": "Outbound"
