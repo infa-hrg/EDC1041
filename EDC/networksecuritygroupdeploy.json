@@ -97,9 +97,9 @@
             }
           },
           {
-            "name": "OutboundforCustomScript",
+            "name": "Outboundforazuregithub",
             "properties": {
-              "description": "open internet for CustomScript .",
+              "description": "open ports for Azure github CustomScript .",
               "protocol": "Tcp",
               "sourcePortRange": "*",
               "destinationPortRange": "443",
@@ -125,9 +125,9 @@
             }
           },
           {
-            "name": "Outboundforstorage",
+            "name": "Outboundforblobstorage",
             "properties": {
-              "description": "open ports for storage .",
+              "description": "open ports for blob storage - changes according to regions.",
               "protocol": "Tcp",
               "sourcePortRange": "*",
               "destinationPortRange": "443",
@@ -135,6 +135,132 @@
               "destinationAddressPrefix": "52.163.0.0/16",
               "access": "Allow",
               "priority": 497,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforNTP1",
+            "properties": {
+              "description": "open ports for NTP server.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "203.123.48.219/32",
+              "access": "Allow",
+              "priority": 496,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforNTP2",
+            "properties": {
+              "description": "open ports for NTP server.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "51.79.161.173/32",
+              "access": "Allow",
+              "priority": 495,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforNTP3",
+            "properties": {
+              "description": "open ports for NTP server.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "162.159.200.123/32",
+              "access": "Allow",
+              "priority": 494,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforNTP4",
+            "properties": {
+              "description": "open ports for NTP server.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "139.99.91.97/32",
+              "access": "Allow",
+              "priority": 493,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforAZURERHUI1",
+            "properties": {
+              "description": "open ports for Azure RHUI servers.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "13.91.47.76/32",
+              "access": "Allow",
+              "priority": 492,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforAZURERHUI2",
+            "properties": {
+              "description": "open ports for Azure RHUI servers.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "40.85.190.91/32",
+              "access": "Allow",
+              "priority": 491,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforAZURERHUI3",
+            "properties": {
+              "description": "open ports for Azure RHUI servers.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "52.187.75.218/32",
+              "access": "Allow",
+              "priority": 490,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforAZURERHUI4",
+            "properties": {
+              "description": "open ports for Azure RHUI servers.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "52.174.163.213/32",
+              "access": "Allow",
+              "priority": 489,
+              "direction": "Outbound"
+            }
+          },
+          {
+            "name": "OutboundforAZURERHUI5",
+            "properties": {
+              "description": "open ports for Azure RHUI servers.",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "52.237.203.198/32",
+              "access": "Allow",
+              "priority": 488,
               "direction": "Outbound"
             }
           }
