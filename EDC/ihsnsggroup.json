@@ -250,6 +250,62 @@
                 "priority": 488,
                 "direction": "Outbound"
               }
+            },
+            {
+              "name": "OutboundforPostgres1",
+              "properties": {
+                "description": "open ports for Postgres repo.",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "443",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "87.238.57.227/32",
+                "access": "Allow",
+                "priority": 487,
+                "direction": "Outbound"
+              }
+            },
+            {
+              "name": "OutboundforPostgres2",
+              "properties": {
+                "description": "open ports for Postgres repo.",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "443",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "72.32.157.246/32",
+                "access": "Allow",
+                "priority": 486,
+                "direction": "Outbound"
+              }
+            },
+            {
+              "name": "OutboundforPostgres3",
+              "properties": {
+                "description": "open ports for Postgres repo.",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "443",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "217.196.149.55/32",
+                "access": "Allow",
+                "priority": 485,
+                "direction": "Outbound"
+              }
+            },
+            {
+              "name": "OutboundforPostgres4",
+              "properties": {
+                "description": "open ports for Postgres repo.",
+                "protocol": "Tcp",
+                "sourcePortRange": "*",
+                "destinationPortRange": "443",
+                "sourceAddressPrefix": "*",
+                "destinationAddressPrefix": "147.75.85.69/32",
+                "access": "Allow",
+                "priority": 484,
+                "direction": "Outbound"
+              }
             }
           ]
         }
