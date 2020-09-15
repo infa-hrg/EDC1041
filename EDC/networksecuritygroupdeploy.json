@@ -132,7 +132,7 @@
               "sourcePortRange": "*",
               "destinationPortRange": "443",
               "sourceAddressPrefix": "*",
-              "destinationAddressPrefix": "52.163.0.0/16",
+              "destinationAddressPrefix": "Storage",
               "access": "Allow",
               "priority": 497,
               "direction": "Outbound"
@@ -146,7 +146,7 @@
               "sourcePortRange": "*",
               "destinationPortRange": "123",
               "sourceAddressPrefix": "*",
-              "destinationAddressPrefix": "203.123.0.0/8",
+              "destinationAddressPrefix": "203.0.0.0/8",
               "access": "Allow",
               "priority": 496,
               "direction": "Outbound"
@@ -160,7 +160,7 @@
               "sourcePortRange": "*",
               "destinationPortRange": "123",
               "sourceAddressPrefix": "*",
-              "destinationAddressPrefix": "51.79.0.0/8",
+              "destinationAddressPrefix": "51.0.0.0/8",
               "access": "Allow",
               "priority": 495,
               "direction": "Outbound"
@@ -171,7 +171,7 @@
             "properties": {
               "access": "Allow",
               "description": "open ports for NTP server.",
-              "destinationAddressPrefix": "162.159.0.0/8",
+              "destinationAddressPrefix": "162.0.0.0/8",
               "destinationPortRange": "123",
               "direction": "Outbound",
               "priority": 494,
@@ -188,7 +188,7 @@
               "sourcePortRange": "*",
               "destinationPortRange": "123",
               "sourceAddressPrefix": "*",
-              "destinationAddressPrefix": "139.99.0.0/8",
+              "destinationAddressPrefix": "139.0.0.0/8",
               "access": "Allow",
               "priority": 493,
               "direction": "Outbound"
